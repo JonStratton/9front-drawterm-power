@@ -40,6 +40,8 @@ enum
 #define QID(p, c, y) 	(((p)<<16) | ((c)<<4) | (y))
 #define ipzero(x)	memset(x, 0, IPaddrlen)
 
+#define DEVDOT -2
+
 typedef struct Proto	Proto;
 typedef struct Conv	Conv;
 struct Conv
@@ -55,6 +57,7 @@ struct Conv
 	uchar	raddr[IPaddrlen];
 	ushort	rport;
 	int	restricted;
+	ulong	ctime;
 	char	cerr[KNAMELEN];
 	Proto*	p;
 };
@@ -94,13 +97,13 @@ ip3gen(Chan *c, int i, Dir *dp)
 		return -1;
 	case Qctl:
 		devdir(c, q, "ctl", 0, cv->owner, cv->perm, dp);
-		return 1;
+		goto done;
 	case Qdata:
 		devdir(c, q, "data", 0, cv->owner, cv->perm, dp);
-		return 1;
+		goto done;
 	case Qlisten:
 		devdir(c, q, "listen", 0, cv->owner, cv->perm, dp);
-		return 1;
+		goto done;
 	case Qlocal:
 		p = "local";
 		break;
@@ -112,6 +115,8 @@ ip3gen(Chan *c, int i, Dir *dp)
 		break;
 	}
 	devdir(c, q, p, 0, cv->owner, 0444, dp);
+done:
+	dp->mtime = cv->ctime;
 	return 1;
 }
 
@@ -159,13 +164,14 @@ ipgen(Chan *c, char *nname, Dirtab *d, int nd, int s, Dir *dp)
 
 	switch(TYPE(c->qid)) {
 	case Qtopdir:
-		if(s == DEVDOTDOT){
+		if(s == DEVDOTDOT || s == DEVDOT){
 			mkqid(&q, QID(0, 0, Qtopdir), 0, QTDIR);
 			snprint(up->genbuf, sizeof up->genbuf, "#I%lud", c->dev);
 			devdir(c, q, up->genbuf, 0, network, 0555, dp);
 			return 1;
 		}
 		if(s < np) {
+	Protodir:
 			mkqid(&q, QID(s, 0, Qprotodir), 0, QTDIR);
 			devdir(c, q, proto[s].name, 0, network, 0555, dp);
 			return 1;
@@ -181,11 +187,17 @@ ipgen(Chan *c, char *nname, Dirtab *d, int nd, int s, Dir *dp)
 			devdir(c, q, up->genbuf, 0, network, 0555, dp);
 			return 1;
 		}
+		if(s == DEVDOT){
+			s = PROTO(c->qid);
+			goto Protodir;
+		}
 		if(s < proto[PROTO(c->qid)].nc) {
+	Convdir:
 			cv = proto[PROTO(c->qid)].conv[s];
 			snprint(up->genbuf, sizeof up->genbuf, "%d", s);
 			mkqid(&q, QID(PROTO(c->qid), s, Qconvdir), 0, QTDIR);
 			devdir(c, q, up->genbuf, 0, cv->owner, 0555, dp);
+			dp->mtime = cv->ctime;
 			return 1;
 		}
 		s -= proto[PROTO(c->qid)].nc;
@@ -198,6 +210,10 @@ ipgen(Chan *c, char *nname, Dirtab *d, int nd, int s, Dir *dp)
 			mkqid(&q, QID(s, 0, Qprotodir), 0, QTDIR);
 			devdir(c, q, proto[s].name, 0, network, 0555, dp);
 			return 1;
+		}
+		if(s == DEVDOT){
+			s = CONV(c->qid);
+			goto Convdir;
 		}
 		return ip3gen(c, s+Qconvbase, dp);
 	case Qctl:
@@ -269,6 +285,16 @@ ipwalk(Chan *c, Chan *nc, char **name, int nname)
 int
 ipstat(Chan *c, uchar *dp, int n)
 {
+	Dir d;
+
+	if(c->qid.type == QTDIR){
+		ipgen(c, nil, nil, 0, DEVDOT, &d);
+		n = convD2M(&d, dp, n);
+		if(n == 0)
+			error(Ebadarg);
+		return n;
+	}
+
 	return devstat(c, dp, n, 0, 0, ipgen);
 }
 
@@ -631,6 +657,7 @@ protoclone(Proto *p, char *user, int nfd)
 	c->lport = 0;
 	c->rport = 0;
 	c->sfd = nfd;
+	c->ctime = seconds();
 
 	unlock(&c->r.lk);
 	unlock(&p->l);
