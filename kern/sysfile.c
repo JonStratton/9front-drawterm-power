@@ -848,6 +848,8 @@ enderror(void)
 {
 	assert(up->nerrlab == 1);
 	poperror();
+
+	up->notepending = 0;	/* theres no popnote */
 }
 
 static void
