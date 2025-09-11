@@ -14,7 +14,9 @@ OFILES=\
 	icossin.$O\
 	icossin2.$O\
 	rectclip.$O\
-	rgb.$O
+	rgb.$O\
+	warp.$O\
+	mkwarp.$O
 
 default: $(LIB)
 $(LIB): $(OFILES)

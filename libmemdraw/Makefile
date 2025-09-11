@@ -21,7 +21,8 @@ OFILES=\
 	string.$O\
 	subfont.$O\
 	unload.$O\
-	write.$O
+	write.$O\
+	warp.$O
 
 default: $(LIB)
 $(LIB): $(OFILES)

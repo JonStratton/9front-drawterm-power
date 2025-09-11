@@ -11,6 +11,7 @@ typedef struct	Rectangle Rectangle;
 typedef struct	RGB RGB;
 typedef struct	Screen Screen;
 typedef struct	Subfont Subfont;
+typedef long	Warp[3][3];
 
 extern	int	Rfmt(Fmt*);
 extern	int	Pfmt(Fmt*);
@@ -441,6 +442,8 @@ extern void	fillarc(Image*, Point, int, int, Image*, Point, int, int);
 extern void	fillarcop(Image*, Point, int, int, Image*, Point, int, int, Drawop);
 extern void	border(Image*, Rectangle, int, Image*, Point);
 extern void	borderop(Image*, Rectangle, int, Image*, Point, Drawop);
+extern void	mkwarp(Warp, double[3][3]);
+extern void	affinewarp(Image*, Rectangle, Image*, Point, Warp, int);
 
 /*
  * Font management

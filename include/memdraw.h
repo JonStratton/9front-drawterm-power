@@ -144,6 +144,9 @@ extern void	memellipse(Memimage*, Point, int, int, int, Memimage*, Point, int);
 extern void	memarc(Memimage*, Point, int, int, int, Memimage*, Point, int, int, int);
 extern Rectangle	memlinebbox(Point, Point, int, int, int);
 extern int	memlineendsize(int);
+extern int	memaffinewarp(Memimage*, Rectangle, Memimage*, Point, Warp, int);
+extern Memimage*	allocmemimagekernel(double*, int, int, double);
+extern int	memimagecorrelate(Memimage*, Rectangle, Memimage*, Point, Memimage*);
 extern void	_memmkcmap(void);
 extern int	memimageinit(void);
 
