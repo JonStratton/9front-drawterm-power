@@ -11,7 +11,7 @@ lfdchan(void *fd)
 	Chan *c;
 	
 	c = newchan();
-	c->type = devno('L', 0);
+	c->type = devno('L');
 	c->aux = fd;
 	c->path = newpath("fd");
 	c->mode = ORDWR;

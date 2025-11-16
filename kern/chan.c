@@ -1182,7 +1182,6 @@ namec(char *aname, int amode, int omode, ulong perm)
 	
 	case '#':
 		nomount = 1;
-		up->genbuf[0] = '\0';
 		n = 0;
 		while(*name != '\0' && (*name != '/' || n < 2)){
 			if(n >= sizeof(up->genbuf)-1)
@@ -1205,7 +1204,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 		n = chartorune(&r, up->genbuf+1)+1;
 		if(up->pgrp->noattach && utfrune("|decp", r)==nil)
 			error(Enoattach);
-		t = devno(r, 1);
+		t = devno(r);
 		if(t == -1)
 			error(Ebadsharp);
 		c = devtab[t]->attach(up->genbuf+n);
@@ -1278,6 +1277,14 @@ namec(char *aname, int amode, int omode, ulong perm)
 		error("cannot exec directory");
 
 	switch(amode){
+	case Aunmount:
+		/*
+		 * When unmounting, the channel must be opend when not a directory
+		 * in order to get the real chan from something like /srv/cs or /fd/0.
+		 */ 
+		if((c->qid.type&QTDIR) == 0)
+			goto Open;
+		/* wet floor */
 	case Abind:
 		/* no need to maintain path - cannot dotdot an Abind */
 		m = nil;
@@ -1330,6 +1337,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 
 		case Aopen:
 		case Acreate:
+		case Aunmount:
 			/* only save the mount head if it's a multiple element union */
 			if(m != nil) {
 				rlock(&m->lock);

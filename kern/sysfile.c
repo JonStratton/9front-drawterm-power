@@ -202,18 +202,16 @@ long
 _syspipe(int fd[2])
 {
 	Chan *c[2];
-	Dev *d;
 	static char *datastr[] = {"data", "data1"};
 
-	d = devtab[devno('|', 0)];
 	c[0] = namec("#|", Atodir, 0, 0);
-	c[1] = 0;
+	c[1] = nil;
 	fd[0] = -1;
 	fd[1] = -1;
 
 	if(waserror()){
 		cclose(c[0]);
-		if(c[1])
+		if(c[1] != nil)
 			cclose(c[1]);
 		nexterror();
 	}
@@ -222,8 +220,8 @@ _syspipe(int fd[2])
 		error(Egreg);
 	if(walk(&c[1], datastr+1, 1, 1, nil) < 0)
 		error(Egreg);
-	c[0] = d->open(c[0], ORDWR);
-	c[1] = d->open(c[1], ORDWR);
+	c[0] = devtab[c[0]->type]->open(c[0], ORDWR);
+	c[1] = devtab[c[1]->type]->open(c[1], ORDWR);
 	if(newfd2(fd, c) < 0)
 		error(Enofd);
 	poperror();
@@ -719,7 +717,7 @@ _sysunmount(char *old, char *new)
 {
 	Chan *cmount, *cmounted;
 
-	cmounted = 0;
+	cmounted = nil;
 
 	cmount = namec(new, Amount, 0, 0);
 
@@ -729,13 +727,7 @@ _sysunmount(char *old, char *new)
 			nexterror();
 		}
 		validaddr(old, 1, 0);
-		/*
-		 * This has to be namec(..., Aopen, ...) because
-		 * if arg[0] is something like /srv/cs or /fd/0,
-		 * opening it is the only way to get at the real
-		 * Chan underneath.
-		 */
-		cmounted = namec(old, Aopen, OREAD, 0);
+		cmounted = namec(old, Aunmount, OREAD, 0);
 		poperror();
 	}
 

@@ -98,6 +98,7 @@ enum
 	Amount,				/* to be mounted or mounted upon */
 	Acreate,			/* is to be created */
 	Aremove,			/* will be removed by caller */
+	Aunmount,			/* unmount arg */
 
 	COPEN	= 0x0001,		/* for i/o */
 	CMSG	= 0x0002,		/* the message channel for a mount */
