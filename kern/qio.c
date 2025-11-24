@@ -9,7 +9,6 @@
 /*
  *  IO queues
  */
-typedef struct Queue	Queue;
 struct Queue
 {
 	Lock	lk;
