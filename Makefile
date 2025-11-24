@@ -39,12 +39,7 @@ clean:
 	rm -f *.o */*.o */*.a *.a drawterm drawterm.exe
 
 libmachdep.a:
-	arch=`uname -m|sed 's/i.86/386/;s/Power Macintosh/power/; s/x86_64/amd64/; s/armv[567].*/arm/; s/aarch64/arm64/'`;
-	ifeq ($(arch),power)
-	        (cd posix-$(arch) && $(MAKE))
-	else
-	        (cd posix-port; $(MAKE))
-	endif
+	(cd posix-power && $(MAKE))
 
 kern/libkern.a:
 	(cd kern; $(MAKE))
