@@ -39,7 +39,7 @@ clean:
 	rm -f *.o */*.o */*.a *.a drawterm drawterm.exe
 
 libmachdep.a:
-	(cd posix-port; $(MAKE))
+	(cd posix-power && $(MAKE))
 
 kern/libkern.a:
 	(cd kern; $(MAKE))

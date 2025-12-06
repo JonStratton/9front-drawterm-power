@@ -30,7 +30,7 @@ struct Sampler
 	Rectangle r;
 	int bpl;
 	int cmask;
-	long Δx, Δy;
+	long deltax, deltay;
 	Memimage *k;			/* filtering kernel */
 	Point kcp;			/* kernel center point */
 	ulong (*fn)(Sampler*, Point);
@@ -646,7 +646,7 @@ static ulong
 bilinear(Sampler *s, Point p)
 {
 	ulong c00, c01, c10, c11;
-	uchar c0₀, c0₁, c0₂, c0₃, c1₀, c1₁, c1₂, c1₃;
+	uchar c0zero, c0one, c0two, c0three, c1zero, c1one, c1two, c1three;
 
 	c00 = sample1(s, p);
 	p.x++;
@@ -656,38 +656,38 @@ bilinear(Sampler *s, Point p)
 	p.x++;
 	c11 = sample1(s, p);
 
-	c0₀ = c00>>24;
-	c0₁ = c00>>16;
-	c0₂ = c00>>8;
-	c0₃ = c00;
-	c1₀ = c10>>24;
-	c1₁ = c10>>16;
-	c1₂ = c10>>8;
-	c1₃ = c10;
-	c0₀ = lerp(c0₀, c01>>24 & 0xFF, s->Δx);
-	c0₁ = lerp(c0₁, c01>>16 & 0xFF, s->Δx);
-	c0₂ = lerp(c0₂, c01>>8  & 0xFF, s->Δx);
-	c0₃ = lerp(c0₃, c01     & 0xFF, s->Δx);
-	c1₀ = lerp(c1₀, c11>>24 & 0xFF, s->Δx);
-	c1₁ = lerp(c1₁, c11>>16 & 0xFF, s->Δx);
-	c1₂ = lerp(c1₂, c11>>8  & 0xFF, s->Δx);
-	c1₃ = lerp(c1₃, c11     & 0xFF, s->Δx);
-	return    (lerp(c0₀, c1₀, s->Δy)) << 24
-		| (lerp(c0₁, c1₁, s->Δy)) << 16
-		| (lerp(c0₂, c1₂, s->Δy)) << 8
-		| (lerp(c0₃, c1₃, s->Δy));
+	c0zero = c00>>24;
+	c0one = c00>>16;
+	c0two = c00>>8;
+	c0three = c00;
+	c1zero = c10>>24;
+	c1one = c10>>16;
+	c1two = c10>>8;
+	c1three = c10;
+	c0zero = lerp(c0zero, c01>>24 & 0xFF, s->deltax);
+	c0one = lerp(c0one, c01>>16 & 0xFF, s->deltax);
+	c0two = lerp(c0two, c01>>8  & 0xFF, s->deltax);
+	c0three = lerp(c0three, c01     & 0xFF, s->deltax);
+	c1zero = lerp(c1zero, c11>>24 & 0xFF, s->deltax);
+	c1one = lerp(c1one, c11>>16 & 0xFF, s->deltax);
+	c1two = lerp(c1two, c11>>8  & 0xFF, s->deltax);
+	c1three = lerp(c1three, c11     & 0xFF, s->deltax);
+	return    (lerp(c0zero, c1zero, s->deltay)) << 24
+		| (lerp(c0one, c1one, s->deltay)) << 16
+		| (lerp(c0two, c1two, s->deltay)) << 8
+		| (lerp(c0three, c1three, s->deltay));
 }
 
 static ulong
 correlate(Sampler *s, Point p)
 {
 	Point sp;
-	int r, g, b, a, Σr, Σg, Σb, Σa;
+	int r, g, b, a, sigmar, sigmag, sigmab, sigmaa;
 	long *kp, kv;
 	ulong v;
 
 	kp = (long*)(s->k->data->bdata + s->k->zero);
-	Σr = Σg = Σb = Σa = 0;
+	sigmar = sigmag = sigmab = sigmaa = 0;
 
 	for(sp.y = 0; sp.y < s->k->r.max.y; sp.y++)
 	for(sp.x = 0; sp.x < s->k->r.max.x; sp.x++){
@@ -703,12 +703,12 @@ correlate(Sampler *s, Point p)
 		b = fixmul(b, kv);
 		a = fixmul(a, kv);
 
-		Σr += r; Σg += g; Σb += b; Σa += a;
+		sigmar += r; sigmag += g; sigmab += b; sigmaa += a;
 	}
-	r = clamp(fix2int(Σr), 0, 0xFF);
-	g = clamp(fix2int(Σg), 0, 0xFF);
-	b = clamp(fix2int(Σb), 0, 0xFF);
-	a = clamp(fix2int(Σa), 0, 0xFF);
+	r = clamp(fix2int(sigmar), 0, 0xFF);
+	g = clamp(fix2int(sigmag), 0, 0xFF);
+	b = clamp(fix2int(sigmab), 0, 0xFF);
+	a = clamp(fix2int(sigmaa), 0, 0xFF);
 
 	return r<<24|g<<16|b<<8|a;
 }
@@ -719,7 +719,7 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m, int smoo
 	ulong (*sample)(Sampler*, Point) = sample1;
 	Sampler samp;
 	Blitter blit;
-	Point sp, dp, p2, p2₀;
+	Point sp, dp, p2, p2zero;
 	Rectangle dr;
 	ulong c;
 
@@ -744,11 +744,11 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m, int smoo
 	 * 	Lee, S., Lee, GG., Jang, E.S., Kim, WY,
 	 * 	Intelligent Computing.  ICIC 2006. LNCS, vol 4113.
 	 */
-	p2 = p2₀ = xform((Point){int2fix(r.min.x - dr.min.x) + (1<<6), int2fix(r.min.y - dr.min.y) + (1<<6)}, m);
+	p2 = p2zero = xform((Point){int2fix(r.min.x - dr.min.x) + (1<<6), int2fix(r.min.y - dr.min.y) + (1<<6)}, m);
 	for(dp.y = r.min.y; dp.y < r.max.y; dp.y++){
 	for(dp.x = r.min.x; dp.x < r.max.x; dp.x++){
-		samp.Δx = fixfrac(p2.x);
-		samp.Δy = fixfrac(p2.y);
+		samp.deltax = fixfrac(p2.x);
+		samp.deltay = fixfrac(p2.y);
 
 		sp.x = sp0.x + fix2int(p2.x);
 		sp.y = sp0.y + fix2int(p2.y);
@@ -759,8 +759,8 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m, int smoo
 		p2.x += m[0][0];
 		p2.y += m[1][0];
 	}
-		p2.x = p2₀.x += m[0][1];
-		p2.y = p2₀.y += m[1][1];
+		p2.x = p2zero.x += m[0][1];
+		p2.y = p2zero.y += m[1][1];
 	}
 	return 0;
 }
@@ -768,13 +768,13 @@ memaffinewarp(Memimage *d, Rectangle r, Memimage *s, Point sp0, Warp m, int smoo
 static double
 coeffsum(double *m, int len)
 {
-	double *e, Σ;
+	double *e, sigma;
 
 	e = m + len;
-	Σ = 0;
+	sigma = 0;
 	while(m < e)
-		Σ += *m++;
-	return Σ;
+		sigma += *m++;
+	return sigma;
 }
 
 Memimage *
